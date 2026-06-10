@@ -2,18 +2,13 @@ import {SplashScreen, Stack, usePathname, useGlobalSearchParams} from "expo-rout
 import '@/global.css';
 import {useFonts} from "expo-font";
 import {useEffect, useRef} from "react";
-import { ClerkProvider, useAuth } from '@clerk/expo';
-import { tokenCache } from '@clerk/expo/token-cache';
+import { ClerkProvider, useAuth } from '@/src/mocks/clerk';
 import { PostHogProvider } from 'posthog-react-native';
 import { posthog } from '../src/config/posthog';
 
 SplashScreen.preventAutoHideAsync();
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
-
-if (!publishableKey) {
-  throw new Error('Add your Clerk Publishable Key to the .env file');
-}
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || "dummy";
 
 function RootLayoutContent() {
   const { isLoaded: authLoaded } = useAuth();
@@ -72,7 +67,7 @@ export default function RootLayout() {
         propsToCapture: ['testID'],
       }}
     >
-      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <ClerkProvider>
         <RootLayoutContent />
       </ClerkProvider>
     </PostHogProvider>

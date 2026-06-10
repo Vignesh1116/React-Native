@@ -1,6 +1,6 @@
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Link, useRouter, type Href } from 'expo-router';
-import { useSignIn } from '@clerk/expo';
+import { useSignIn } from '@/src/mocks/clerk';
 import { useState } from 'react';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
@@ -9,7 +9,7 @@ import { usePostHog } from 'posthog-react-native';
 const SafeAreaView = styled(RNSafeAreaView);
 
 const SignIn = () => {
-    const { signIn, errors, fetchStatus } = useSignIn();
+    const { signIn, errors = { fields: {} }, fetchStatus } = useSignIn();
     const router = useRouter();
     const posthog = usePostHog();
 
@@ -28,63 +28,18 @@ const SignIn = () => {
 
     const handleSubmit = async () => {
         if (!formValid) return;
-
-        const { error } = await signIn.password({
-            emailAddress,
-            password,
+        
+        // Mock bypassing all Clerk logic directly
+        await signIn.finalize({
+            navigate: ({ session, decorateUrl }: any) => {
+                posthog.identify(emailAddress, {
+                    $set: { email: emailAddress },
+                    $set_once: { first_sign_in_date: new Date().toISOString() },
+                });
+                posthog.capture('user_signed_in', { email: emailAddress });
+                router.replace('/(tabs)' as Href);
+            },
         });
-
-        if (error) {
-            console.error(JSON.stringify(error, null, 2));
-            posthog.capture('user_sign_in_failed', {
-                error_message: error.message,
-            });
-            return;
-        }
-
-        if (signIn.status === 'complete') {
-            await signIn.finalize({
-                navigate: ({ session, decorateUrl }) => {
-                    if (session?.currentTask) {
-                        console.log(session?.currentTask);
-                        return;
-                    }
-
-                    posthog.identify(emailAddress, {
-                        $set: { email: emailAddress },
-                        $set_once: { first_sign_in_date: new Date().toISOString() },
-                    });
-                    posthog.capture('user_signed_in', { email: emailAddress });
-
-                    const url = decorateUrl('/(tabs)');
-                    if (url.startsWith('http')) {
-                        // Only use window.location on web platform
-                        if (typeof window !== 'undefined' && window.location) {
-                            window.location.href = url;
-                        } else {
-                            // On native, just use router navigation
-                            router.replace('/(tabs)' as Href);
-                        }
-                    } else {
-                        router.replace(url as Href);
-                    }
-                },
-            });
-        } else if (signIn.status === 'needs_second_factor') {
-            // Handle MFA if needed (not implemented in this basic flow)
-            console.log('MFA required');
-        } else if (signIn.status === 'needs_client_trust') {
-            // Send email code for client trust verification
-            const emailCodeFactor = signIn.supportedSecondFactors.find(
-                (factor) => factor.strategy === 'email_code'
-            );
-
-            if (emailCodeFactor) {
-                await signIn.mfa.sendEmailCode();
-            }
-        } else {
-            console.error('Sign-in attempt not complete:', signIn);
-        }
     };
 
     const handleVerify = async () => {
@@ -92,7 +47,7 @@ const SignIn = () => {
 
         if (signIn.status === 'complete') {
             await signIn.finalize({
-                navigate: ({ session, decorateUrl }) => {
+                navigate: ({ session, decorateUrl }: any) => {
                     if (session?.currentTask) {
                         console.log(session?.currentTask);
                         return;

@@ -12,7 +12,7 @@ import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import {useState, useMemo} from "react";
-import { useUser } from '@clerk/expo';
+import { useUser } from '@/src/mocks/clerk';
 import { usePostHog } from 'posthog-react-native';
 import { useSubscriptionStore } from "@/lib/subscriptionStore";
 const SafeAreaView = styled(RNSafeAreaView);
@@ -49,8 +49,8 @@ export default function App() {
         posthog.capture('subscription_created', {
             subscription_name: newSubscription.name,
             subscription_price: newSubscription.price,
-            subscription_frequency: newSubscription.frequency,
-            subscription_category: newSubscription.category,
+            subscription_frequency: newSubscription.frequency || '',
+            subscription_category: newSubscription.category || '',
         });
     };
 
@@ -94,7 +94,7 @@ export default function App() {
 
                                 <FlatList
                                     data={upcomingSubscriptions}
-                                    renderItem={({ item }) => (<UpcomingSubscriptionCard {...item} />)}
+                                    renderItem={({ item }) => (<UpcomingSubscriptionCard {...item} daysLeft={dayjs(item.renewalDate).diff(dayjs(), 'day')} />)}
                                     keyExtractor={(item) => item.id}
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
@@ -118,7 +118,7 @@ export default function App() {
                     ItemSeparatorComponent={() => <View className="h-4" />}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={<Text className="home-empty-state">No subscriptions yet.</Text>}
-                    contentContainerClassName="pb-30"
+                    contentContainerStyle={{ paddingBottom: 120 }}
                 />
 
             <CreateSubscriptionModal

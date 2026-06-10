@@ -5,7 +5,7 @@ import { colors, components } from '@/constants/theme'
 import clsx from "clsx";
 import {Image} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuth } from '@clerk/expo';
+import { useAuth } from '@/src/mocks/clerk';
 
 const tabBar = components.tabBar;
 
@@ -63,7 +63,7 @@ const TabLayout = () => {
                             name={tab.name}
                             options={{
                                     title: tab.title,
-                                    tabBarIcon: ({focused}) => (
+                                    tabBarIcon: ({focused}: {focused: boolean}) => (
                                         <TabIcon focused={focused} icon={tab.icon} />
                                     )
                             }}/>

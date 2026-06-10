@@ -1,6 +1,6 @@
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Link, useRouter, type Href } from 'expo-router';
-import { useSignUp, useAuth } from '@clerk/expo';
+import { useSignUp, useAuth } from '@/src/mocks/clerk';
 import { useState } from 'react';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { styled } from 'nativewind';
@@ -9,7 +9,7 @@ import { usePostHog } from 'posthog-react-native';
 const SafeAreaView = styled(RNSafeAreaView);
 
 const SignUp = () => {
-    const { signUp, errors, fetchStatus } = useSignUp();
+    const { signUp, errors = { fields: {} }, fetchStatus } = useSignUp();
     const { isSignedIn } = useAuth();
     const router = useRouter();
     const posthog = usePostHog();
@@ -29,24 +29,18 @@ const SignUp = () => {
 
     const handleSubmit = async () => {
         if (!formValid) return;
-
-        const { error } = await signUp.password({
-            emailAddress,
-            password,
+        
+        // Mock bypassing all Clerk logic directly
+        await signUp.finalize({
+            navigate: ({ session, decorateUrl }: any) => {
+                posthog.identify(emailAddress, {
+                    $set: { email: emailAddress },
+                    $set_once: { sign_up_date: new Date().toISOString() },
+                });
+                posthog.capture('user_signed_up', { email: emailAddress });
+                router.replace('/(tabs)' as Href);
+            },
         });
-
-        if (error) {
-            console.error(JSON.stringify(error, null, 2));
-            posthog.capture('user_sign_up_failed', {
-                error_message: error.message,
-            });
-            return;
-        }
-
-        // Send verification email
-        if (!error) {
-            await signUp.verifications.sendEmailCode();
-        }
     };
 
     const handleVerify = async () => {
@@ -56,7 +50,7 @@ const SignUp = () => {
 
         if (signUp.status === 'complete') {
             await signUp.finalize({
-                navigate: ({ session, decorateUrl }) => {
+                navigate: ({ session, decorateUrl }: any) => {
                     if (session?.currentTask) {
                         console.log(session?.currentTask);
                         return;
@@ -87,8 +81,8 @@ const SignUp = () => {
         }
     };
 
-    // Don't show anything if already signed in or sign-up is complete
-    if (signUp.status === 'complete' || isSignedIn) {
+    // Don't show anything if already signed in
+    if (isSignedIn) {
         return null;
     }
 
